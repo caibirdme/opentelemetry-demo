@@ -663,6 +663,52 @@ services:
     environment:
       - METRICS_STORAGE_TYPE=prometheus
     logging: *logging
+  # Minio
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    logging: *logging
+  # Initialize Minio
+  mc:
+    image: minio/mc:latest
+    container_name: minio-mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      while ! /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin; do
+        echo 'Waiting for MinIO to be ready...';
+        sleep 2;
+      done;
+      /usr/bin/mc mb --ignore-existing myminio/quickwit;
+      "
+  # Quickwit
+  quickwit:
+    container_name: qwquickwit
+    image: quickwit/quickwit
+    environment:
+      - QW_CONFIG=/quickwit/qwdata/config/quickwit.yaml
+    depends_on:
+      - mc
+      - postgres
+    ports:
+      - 7280:7280
+    volumes:
+      - ./src/quickwit/quickwit.yaml:/quickwit/qwdata/config/quickwit.yaml
+    command: run
+    logging: *logging
+  # Postgres
+  postgres:
+    container_name: postgres
+    image: ${POSTGRES_IMAGE}
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opentelemetry
 
   # Grafana
   grafana:
@@ -680,6 +726,8 @@ services:
       - ./src/grafana/provisioning/:/etc/grafana/provisioning/
     ports:
       - "${GRAFANA_SERVICE_PORT}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     logging: *logging
 
   # OpenTelemetry Collector

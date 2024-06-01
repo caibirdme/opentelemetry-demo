@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    uid: loki_uid_1
+    access: proxy
+    url: http://host.docker.internal:6778
+    jsonData:
+      maxLines: 500
+      derivedFields:
+        # Field with internal link pointing to data source in Grafana.
+        # datasourceUid value can be anything, but it should be unique across all defined data source uids.
+        - datasourceUid: tempo_uid_1
+          matcherRegex: trace_id
+          matcherType: label
+          name: trace_id
+          url: "$${__value.raw}"
+          urlDisplayLabel: JumpToTrace

@@ -16,3 +16,15 @@
 #    pipelines:
 #      traces:
 #        exporters: [spanmetrics, otlphttp/example]
+exporters:
+  otlp/quickwit:
+    endpoint: quickwit:7281
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      exporters: [otlp, debug, spanmetrics, otlp/quickwit]
+    logs:
+      exporters: [opensearch, debug, otlp/quickwit]
